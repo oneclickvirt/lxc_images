@@ -45,7 +45,7 @@ for file in "${files[@]}"; do
   echo "  release: \"$release_version\"" >> metadata.yaml
 
   # Creating image folder
-  mkdir -p "lxd/$os_release-$release_version"
+  mkdir -p "temp/$os_release-$release_version"
 
   # Extracting and converting image
   if [[ $file == *.tar.xz ]]; then
@@ -64,6 +64,7 @@ for file in "${files[@]}"; do
   tar -zcf "${filename%.tar*}.tar.gz" "temp/$os_release-$release_version"
 
   # Moving files
+  mkdir -p "lxd/$os_release-$release_version"
   mv "${filename%.tar*}.tar.gz" "lxd/$os_release-$release_version/"
   mv metadata.yaml "lxd/$os_release-$release_version/"
 
