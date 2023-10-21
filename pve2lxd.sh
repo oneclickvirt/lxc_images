@@ -24,32 +24,39 @@ files=(
   "ubuntu-20.04-standard_20.04-1_amd64.tar.gz"
   "ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
 )
+
 for file in "${files[@]}"; do
+  # Delete previous metadata.yaml file
+  rm -f metadata.yaml
+
   wget "${PVE_TEMPLATE_URL}${file}"
   chmod 777 "${file}"
+
+  # Extract metadata information from the filename
+  filename=$(basename "$file")
+  os=$(echo "$filename" | awk -F- '{print $1}')
+  release=$(echo "$filename" | awk -F- '{print $2}')
+  creation_date=$(date +%s)
+
+  # Create metadata.yaml file
+  cat <<EOL > metadata.yaml
+architecture: "x86_64"
+creation_date: $creation_date
+properties:
+  architecture: "x86_64"
+  description: "$os $release Default Image"
+  os: "$os"
+  release: "$release"
+EOL
+
+  # Import image with metadata
+  lxc image import "${file}" --alias "${os}-${release}" --metadata="$(pwd)/metadata.yaml"
+
+  # Remove temporary files
+  rm -f "${file}" metadata.yaml
 done
+
+# Clean up
 rm -rf temp
 mkdir temp
 mkdir lxd
-mv *.tar.gz lxd/
-for file in *.tar.xz *.tar.zst; do
-    if [[ $file == *.tar.xz ]]; then
-        filename=$(basename "$file" .tar.xz)
-        xz -d "${filename}.tar.xz"
-        tar -xvf "${filename}.tar" -C temp/
-        rm -rf "${filename}.tar"
-    fi
-    if [[ $file == *.tar.zst ]]; then
-        filename=$(basename "$file" .tar.zst)
-        unzstd "$file" -o "${filename}.tar"
-        tar -xvf "${file%.tar.zst}.tar" -C temp/
-        rm -rf "${filename}.tar"
-    fi
-    tar -zcf "${filename}".tar.gz temp
-    rm -rf temp
-    rm -rf $file
-    mkdir temp
-done
-
-mv *tar.gz lxd/
-rm -rf *.tar.xz *.tar.zst temp
