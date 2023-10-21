@@ -45,7 +45,7 @@ for file in "${files[@]}"; do
   echo "  release: \"$release_version\"" >> metadata.yaml
 
   # Creating image folder
-  mkdir -p "temp/$os_release-$release_version"
+  mkdir -p "lxd/$os_release-$release_version"
 
   # Extracting and converting image
   if [[ $file == *.tar.xz ]]; then
@@ -73,3 +73,4 @@ done
 
 # Cleaning up
 rm -rf temp metadata.yaml
+rm -rf *.tar.*
