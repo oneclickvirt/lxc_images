@@ -66,10 +66,12 @@ for file in "${files[@]}"; do
   # Moving files
   mkdir -p "lxd/$os_release-$release_version"
   mv "${filename%.tar*}.tar.gz" "lxd/$os_release-$release_version/"
-  mv metadata.yaml "lxd/$os_release-$release_version/"
-
+  tar -czvf meta.tar.gz metadata.yaml
+  mv meta.tar.gz "lxd/$os_release-$release_version/"
+  
   # Cleaning up temporary files
   rm -rf "temp/$os_release-$release_version"
+  rm -rf meta.tar.gz metadata.yaml
 done
 
 # Cleaning up
