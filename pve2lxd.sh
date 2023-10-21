@@ -2,6 +2,7 @@
 
 apt-get update
 apt-get install -y tar xz-utils zstd wget
+
 PVE_TEMPLATE_URL="http://download.proxmox.com/images/system/"
 files=(
   "almalinux-9-default_20221108_amd64.tar.xz"
@@ -26,37 +27,49 @@ files=(
 )
 
 for file in "${files[@]}"; do
-  # Delete previous metadata.yaml file
-  rm -f metadata.yaml
-
   wget "${PVE_TEMPLATE_URL}${file}"
   chmod 777 "${file}"
 
-  # Extract metadata information from the filename
+  # Extracting information from the filename
   filename=$(basename "$file")
-  os=$(echo "$filename" | awk -F- '{print $1}')
-  release=$(echo "$filename" | awk -F- '{print $2}')
-  creation_date=$(date +%s)
+  os_release=$(echo "$filename" | awk -F"[-_.]" '{print $1}')
+  release_version=$(echo "$filename" | awk -F"[-_.]" '{print $2}')
 
-  # Create metadata.yaml file
-  cat <<EOL > metadata.yaml
-architecture: "x86_64"
-creation_date: $creation_date
-properties:
-  architecture: "x86_64"
-  description: "$os $release Default Image"
-  os: "$os"
-  release: "$release"
-EOL
+  # Creating metadata.yaml file
+  echo "architecture: \"x86_64\"" > metadata.yaml
+  echo "creation_date: $(date +%s)" >> metadata.yaml
+  echo "properties:" >> metadata.yaml
+  echo "  architecture: \"x86_64\"" >> metadata.yaml
+  echo "  description: \"$os_release $release_version Default Image\"" >> metadata.yaml
+  echo "  os: \"$os_release\"" >> metadata.yaml
+  echo "  release: \"$release_version\"" >> metadata.yaml
 
-  # Import image with metadata
-  lxc image import "${file}" --alias "${os}-${release}" --metadata="$(pwd)/metadata.yaml"
+  # Creating image folder
+  mkdir -p "temp/$os_release-$release_version"
 
-  # Remove temporary files
-  rm -f "${file}" metadata.yaml
+  # Extracting and converting image
+  if [[ $file == *.tar.xz ]]; then
+    xz -d "$file"
+    tar -xvf "${filename%.tar.xz}.tar" -C "temp/$os_release-$release_version"
+    rm -rf "${filename%.tar.xz}.tar"
+  elif [[ $file == *.tar.zst ]]; then
+    unzstd "$file" -o "${filename%.tar.zst}.tar"
+    tar -xvf "${filename%.tar.zst}.tar" -C "temp/$os_release-$release_version"
+    rm -rf "${filename%.tar.zst}.tar"
+  elif [[ $file == *.tar.gz ]]; then
+    tar -xvf "$file" -C "temp/$os_release-$release_version"
+  fi
+
+  # Creating a new compressed tarball
+  tar -zcf "${filename%.tar*}.tar.gz" "temp/$os_release-$release_version"
+
+  # Moving files
+  mv "${filename%.tar*}.tar.gz" "lxd/$os_release-$release_version/"
+  mv metadata.yaml "lxd/$os_release-$release_version/"
+
+  # Cleaning up temporary files
+  rm -rf "temp/$os_release-$release_version"
 done
 
-# Clean up
-rm -rf temp
-mkdir temp
-mkdir lxd
+# Cleaning up
+rm -rf temp metadata.yaml
